@@ -1,0 +1,10 @@
+FROM ibmjava:8
+
+
+WORKDIR /usr/src/app
+COPY ./target/*.jar ./app.jar
+
+RUN	chown -R ${SERVICE_USER}:${SERVICE_GROUP} ./app.jar
+
+
+ENTRYPOINT ["java","-Djava.security.egd=file:/dev/urandom","-jar","./app.jar", "--port=8080"]

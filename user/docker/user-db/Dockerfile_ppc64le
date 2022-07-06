@@ -1,0 +1,12 @@
+FROM mongo:3
+ADD ./scripts /tmp/scripts
+
+# Modify child mongo to use /data/db-user as dbpath (because /data/db wont persist the build because it is already a VOLUME)
+RUN rm -f /data/db/.firstrun \
+    && mkdir /data/db-user \
+    && /usr/bin/mongod --dbpath /data/db-user --syslog --fork  \
+    && /tmp/scripts/mongo_create_insert.sh \
+    && mongod --dbpath /data/db-user --shutdown \
+    && chgrp -R root /data/db-user \
+    && chmod -R g+w /data/db-user 
+ENTRYPOINT ["/usr/bin/mongod","--dbpath","/data/db-user","--bind_ip_all" ]

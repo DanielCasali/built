@@ -1,0 +1,37 @@
+FROM golang:1.17.7-alpine3.15
+
+COPY . /go/src/github.com/microservices-demo/user/
+WORKDIR /go/src/github.com/microservices-demo/user/
+
+RUN apk update
+RUN apk add git build-base
+RUN go mod init					&& \
+    go get -v github.com/Masterminds/glide	&& \
+    go mod tidy
+    
+RUN glide install && CGO_ENABLED=0 && go build -a -mod=readonly -installsuffix cgo -o /user main.go
+
+FROM alpine:latest
+
+ENV	SERVICE_USER=myuser \
+	SERVICE_UID=10001 \
+	SERVICE_GROUP=mygroup \
+	SERVICE_GID=10001
+
+RUN	addgroup -g ${SERVICE_GID} ${SERVICE_GROUP} && \
+	adduser -g "${SERVICE_NAME} user" -D -H -G ${SERVICE_GROUP} -s /sbin/nologin -u ${SERVICE_UID} ${SERVICE_USER}
+
+ENV HATEAOS user
+ENV USER_DATABASE mongodb
+ENV MONGO_HOST user-db
+
+WORKDIR /
+EXPOSE 8080
+COPY --from=0 /user /
+
+RUN	chmod +x /user && \
+	chown -R ${SERVICE_USER}:${SERVICE_GROUP} /user
+
+USER ${SERVICE_USER}
+
+CMD ["/user","-mongo-uri","mongodb://user-db:27017","-port=8080"]
